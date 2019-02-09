@@ -14,7 +14,7 @@ Open Arduino IDE and follow these steps:
 * open ```Tools -> Board```
 * select ***ESP32 Dev Module*** under "ESP32 Arduino (Husarnet)" section
 
-**3. Install ArduinoJson library **
+**3. Install ArduinoJson library:**
 * open ```Tools -> Manage Libraries...```
 * search for `ArduinoJson`
 * select version `5.13.3`
