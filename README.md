@@ -1,15 +1,15 @@
 # ESP32-http-websocket
 
-_ESP32 + HTTP server + websockets + Bootstrap + Husarnet. A simple project template showing how to use those technologies to create a fast, pretty and secure web UI hosted on ESP32. Works in LAN and over the internet. Written using Arduino framework._
+**_ESP32 + HTTP server + websockets + Bootstrap + Husarnet. A simple project template showing how to use those technologies to create a fast, pretty and secure web UI hosted on ESP32. Works in LAN and over the internet. Written using Arduino framework._**
 
-This template can be a base for your own ESP32 projects needing a responsive web user interface.
+This template can be a base for your own ESP32 based projects needing a responsive web user interface. It is written using Arduino framework and I show here how to develop both C++ and HTML part of the project in a clear way.
 
-It combines all useful technologies in one:
+The template combines all useful technologies in one:
 
 - **WebSockets** - to provide a fast and elegant communication between web browser and ESP32 withough reloading a page like in case of HTTP requests.
-- **Bootstrap 4** - one of the most popular frameworks for rapid web page design. Thanks to Bootstrap you can easily write a pretty web UI looking good both on mobile or desktop devices.
+- **Bootstrap 4** - one of the most popular frameworks for rapid web page design. Thanks to Bootstrap you can easily write a pretty web UI, looking good both on mobile and desktop devices.
 - **JSON** - an elegant way to format data exchanged between web browser and ESP32.
-- **Husarnet** - a Virtual LAN network thanks to that you can access ESP32 both from LAN network and through the internet.
+- **Husarnet** - a Virtual LAN network thanks to which you can access ESP32 both from LAN network and through the internet, without static IP adressess, setting port forwarding on your router etc.
 
 A demo is really basic:
 
