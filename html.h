@@ -1,0 +1,143 @@
+R"rawText(
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <link
+      rel="stylesheet"
+      href="https://use.fontawesome.com/releases/v5.0.13/css/all.css"
+      integrity="sha384-DNOHZ68U8hZfKXOrtjWvjxusGo9WQnrNx2sqG0tfsghAvtVlRW3tvkXWZh58N9jp"
+      crossorigin="anonymous"
+    />
+    <link
+      rel="stylesheet"
+      href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.1/css/bootstrap.min.css"
+      integrity="sha384-WskhaSGFgHYWDcbwN70/dfYBj47jz9qbsMId/iRN3ewGhXQFZCSftd1LZCfmhktB"
+      crossorigin="anonymous"
+    />
+    <title>ESP32 + Bootstrap + WebSocket + JSON + Husarnet</title>
+
+    <script type="text/javascript">
+      var ws;
+
+      function mouseDown() {
+        ws.send('{"led" : 1}');
+      }
+
+      function mouseUp() {
+        ws.send('{"led" : 0}');
+      }
+
+      function WebSocketBegin() {
+        if ("WebSocket" in window) {
+          // Let us open a web socket
+			ws = new WebSocket(
+				location.hostname.match(/\.husarnetusers\.com$/) ? "wss://" + location.hostname + "/__port_8001/" : "ws://" + location.hostname + ":8001/"
+            );
+          //ws = new WebSocket(
+          //  "wss://fc94f91f5992989f83474cc8abf7329b-8001.husarnetusers.com"
+          //);
+
+          ws.onopen = function() {
+            // Web Socket is connected
+          };
+
+          ws.onmessage = function(evt) {
+            //create a JSON object
+            var jsonObject = JSON.parse(evt.data);
+            var cnt = jsonObject.counter;
+            var btn = jsonObject.button;
+
+            document.getElementById("cnt").innerText = cnt;
+            if (btn == 1) {
+              document.getElementById("btn").style.color = "green";
+            } else {
+              document.getElementById("btn").style.color = "red";
+            }
+          };
+
+          ws.onclose = function() {
+            // websocket is closed.
+            alert("Connection is closed...");
+          };
+        } else {
+          // The browser doesn't support WebSocket
+          alert("WebSocket NOT supported by your Browser!");
+        }
+      }
+    </script>
+  </head>
+
+  <body onLoad="javascript:WebSocketBegin()">
+    <header id="main-header" class="py-2 bg-success text-white">
+      <div class="container">
+        <div class="row justify-content-md-center">
+          <div class="col-md-6 text-center">
+            <h1><i class="fas fa-cog"></i> ESP32 control</h1>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <section class="py-5 bg-white">
+      <div class="container">
+        <div class="row">
+          <div class="col">
+            <div class="card bg-light m-2" style="min-height: 15rem;">
+              <div class="card-header">Input 1</div>
+              <div class="card-body">
+                <h5 class="card-title">Counter</h5>
+                <p class="card-text">
+                  A counter value is updated every 100ms by ESP32.
+                </p>
+                <p id="cnt" class="font-weight-bold">
+                  0
+                </p>
+              </div>
+            </div>
+          </div>
+          <div class="col">
+            <div class="card bg-light m-2" style="min-height: 15rem;">
+              <div class="card-header">Input 2</div>
+              <div class="card-body">
+                <h5 class="card-title">Button</h5>
+                <p class="card-text">
+                  Press the push button on ESP32 board to change a color of the
+                  dot below.
+                </p>
+                <i id="btn" class="fas fa-circle fa-2x" style="color:red;"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="col">
+            <div class="card bg-light m-2">
+              <div class="card-header">Output</div>
+              <div class="card-body">
+                <h5 class="card-title">LED</h5>
+                <p class="card-text">
+                  Press the button to turn LED on. Release to turn LED off.
+                </p>
+                <button
+                  type="button"
+                  class="btn btn-lg btn-warning btn-block"
+                  onmousedown="mouseDown()"
+                  onmouseup="mouseUp()"
+                  ontouchstart="mouseDown()"
+                  ontouchend="mouseUp()"
+                >
+                  click
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </body>
+</html>
+
+)rawText"
