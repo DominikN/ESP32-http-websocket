@@ -1,4 +1,6 @@
 #include <ArduinoJson.h>
+#include <AsyncTCP.h>
+#include <ESPAsyncWebServer.h>
 #include <Husarnet.h>
 #include <SPI.h>
 #include <TFT_eSPI.h>
@@ -49,17 +51,22 @@ const char* dashboardURL = "default";
 WiFiMulti wifiMulti;
 
 WebSocketsServer webSocket = WebSocketsServer(WEBSOCKET_PORT);
-HusarnetServer server(HTTP_PORT);
+
+AsyncWebServer server(HTTP_PORT);
 
 StaticJsonDocument<200> jsonDocTx;
 
 StaticJsonDocument<100> jsonDocRx;
 
-const char* html =
+const String html =
 #include "html.h"
     ;
 
 bool wsconnected = false;
+
+void notFound(AsyncWebServerRequest* request) {
+  request->send(404, "text/plain", "Not found");
+}
 
 void onWebSocketEvent(uint8_t num, WStype_t type, uint8_t* payload,
                       size_t length) {
@@ -125,13 +132,6 @@ void setup() {
               1,          /* Priority of the task. */
               NULL);      /* Task handle. */
 
-  xTaskCreate(taskHTTP,   /* Task function. */
-              "taskHTTP", /* String with name of task. */
-              20000,      /* Stack size in bytes. */
-              NULL,       /* Parameter passed as input of the task */
-              2,          /* Priority of the task. */
-              NULL);      /* Task handle. */
-
   xTaskCreate(taskStatus,   /* Task function. */
               "taskStatus", /* String with name of task. */
               10000,        /* Stack size in bytes. */
@@ -168,6 +168,10 @@ void taskWifi(void* parameter) {
   webSocket.begin();
   webSocket.onEvent(onWebSocketEvent);
 
+  server.on("/", HTTP_GET, [](AsyncWebServerRequest* request) {
+    request->send(200, "text/html", html);
+  });
+  server.onNotFound(notFound);
   server.begin();
 
   while (1) {
@@ -180,54 +184,6 @@ void taskWifi(void* parameter) {
     delay(500);
     stat = wifiMulti.run();
     Serial.printf("WiFi status: %d\r\n", (int)stat);
-  }
-}
-
-void taskHTTP(void* parameter) {
-  String header;
-
-  while (1) {
-    while (WiFi.status() != WL_CONNECTED) {
-      delay(500);
-    }
-
-    HusarnetClient client = server.available();
-
-    if (client) {
-      Serial.println("New Client.");
-      String currentLine = "";
-      Serial.printf("connected: %d\r\n", client.connected());
-      while (client.connected()) {
-        if (client.available()) {
-          char c = client.read();
-          Serial.write(c);
-          header += c;
-          if (c == '\n') {
-            if (currentLine.length() == 0) {
-              client.println("HTTP/1.1 200 OK");
-              client.println("Content-type:text/html");
-              client.println("Connection: close");
-              client.println();
-
-              client.println(html);
-              break;
-            } else {
-              currentLine = "";
-            }
-          } else if (c != '\r') {
-            currentLine += c;
-          }
-        }
-      }
-
-      header = "";
-
-      client.stop();
-      Serial.println("Client disconnected.");
-      Serial.println("");
-    } else {
-      delay(200);
-    }
   }
 }
 
