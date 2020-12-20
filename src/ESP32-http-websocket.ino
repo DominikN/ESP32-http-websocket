@@ -4,7 +4,6 @@
 #include <Husarnet.h>
 #include <SPI.h>
 #include <TFT_eSPI.h>
-#include <WebSocketsServer.h>
 #include <WiFi.h>
 #include <WiFiMulti.h>
 
@@ -45,14 +44,12 @@ const char* dashboardURL = "default";
 /* =============== config section end =============== */
 
 #define HTTP_PORT 8000
-#define WEBSOCKET_PORT 8001
 
 // you can provide credentials to multiple WiFi networks
 WiFiMulti wifiMulti;
 
-WebSocketsServer webSocket = WebSocketsServer(WEBSOCKET_PORT);
-
 AsyncWebServer server(HTTP_PORT);
+AsyncWebSocket ws("/ws");
 
 StaticJsonDocument<200> jsonDocTx;
 
@@ -68,53 +65,55 @@ void notFound(AsyncWebServerRequest* request) {
   request->send(404, "text/plain", "Not found");
 }
 
-void onWebSocketEvent(uint8_t num, WStype_t type, uint8_t* payload,
-                      size_t length) {
-  switch (type) {
-    case WStype_DISCONNECTED: {
-      wsconnected = false;
-      Serial.printf("[%u] Disconnected\r\n", num);
-    } break;
-    case WStype_CONNECTED: {
-      wsconnected = true;
-      Serial.printf("\r\n[%u] Connection from Husarnet \r\n", num);
-    } break;
+void onWsEvent(AsyncWebSocket* server, AsyncWebSocketClient* client,
+               AwsEventType type, void* arg, uint8_t* data, size_t len) {
+  if (type == WS_EVT_CONNECT) {
+    wsconnected = true;
+    Serial.printf("ws[%s][%u] connect\n", server->url(), client->id());
+    // client->printf("Hello Client %u :)", client->id());
+    client->ping();
+  } else if (type == WS_EVT_DISCONNECT) {
+    wsconnected = false;
+    Serial.printf("ws[%s][%u] disconnect\n", server->url(), client->id());
+  } else if (type == WS_EVT_ERROR) {
+    Serial.printf("ws[%s][%u] error(%u): %s\n", server->url(), client->id(),
+                  *((uint16_t*)arg), (char*)data);
+  } else if (type == WS_EVT_PONG) {
+    Serial.printf("ws[%s][%u] pong[%u]: %s\n", server->url(), client->id(), len,
+                  (len) ? (char*)data : "");
+  } else if (type == WS_EVT_DATA) {
+    AwsFrameInfo* info = (AwsFrameInfo*)arg;
+    String msg = "";
+    if (info->final && info->index == 0 && info->len == len) {
+      // the whole message is in a single frame and we got all of it's data
+      Serial.printf("ws[%s][%u] %s-message[%llu]: ", server->url(),
+                    client->id(), (info->opcode == WS_TEXT) ? "text" : "binary",
+                    info->len);
 
-    case WStype_TEXT: {
-      Serial.printf("[%u] Text:\r\n", num);
-      for (int i = 0; i < length; i++) {
-        Serial.printf("%c", (char)(*(payload + i)));
+      if (info->opcode == WS_TEXT) {
+        for (size_t i = 0; i < info->len; i++) {
+          msg += (char)data[i];
+        }
+
+        deserializeJson(jsonDocRx, msg);
+
+        uint8_t ledState = jsonDocRx["led"];
+
+        Serial.printf("LED state = %d\r\n", ledState);
+        if (ledState == 1) {
+          digitalWrite(LED_PIN, HIGH);
+        }
+        if (ledState == 0) {
+          digitalWrite(LED_PIN, LOW);
+        }
+        jsonDocRx.clear();
       }
-      Serial.println();
-
-      deserializeJson(jsonDocRx, payload);
-
-      uint8_t ledState = jsonDocRx["led"];
-
-      Serial.printf("LED state = %d\r\n", ledState);
-      if (ledState == 1) {
-        digitalWrite(LED_PIN, HIGH);
-      }
-      if (ledState == 0) {
-        digitalWrite(LED_PIN, LOW);
-      }
-      jsonDocRx.clear();
-    } break;
-
-    case WStype_BIN:
-    case WStype_ERROR:
-    case WStype_FRAGMENT_TEXT_START:
-    case WStype_FRAGMENT_BIN_START:
-    case WStype_FRAGMENT:
-    case WStype_FRAGMENT_FIN:
-    default:
-      break;
+      Serial.printf("%s\n", msg.c_str());
+    }
   }
 }
 
 void taskWifi(void* parameter);
-void taskHTTP(void* parameter);
-void taskWebSocket(void* parameter);
 void taskStatus(void* parameter);
 
 void setup() {
@@ -165,19 +164,22 @@ void taskWifi(void* parameter) {
   Husarnet.join(husarnetJoinCode, hostName);
   Husarnet.start();
 
-  webSocket.begin();
-  webSocket.onEvent(onWebSocketEvent);
+  /* Start web server and web socket server */
 
   server.on("/", HTTP_GET, [](AsyncWebServerRequest* request) {
     request->send(200, "text/html", html);
   });
   server.onNotFound(notFound);
+
+  ws.onEvent(onWsEvent);
+  server.addHandler(&ws);
+
   server.begin();
 
   while (1) {
     while (WiFi.status() == WL_CONNECTED) {
-      webSocket.loop();
-      delay(2);
+      ws.cleanupClients();
+      delay(100);
     }
 
     Serial.printf("WiFi disconnected, reconnecting\r\n");
@@ -209,7 +211,7 @@ void taskStatus(void* parameter) {
       Serial.print(output);
       Serial.println();
 
-      webSocket.sendTXT(0, output);
+      ws.textAll(output);
     }
     delay(100);
   }
