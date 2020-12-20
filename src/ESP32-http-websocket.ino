@@ -4,6 +4,7 @@
 #include <TFT_eSPI.h>
 #include <WebSocketsServer.h>
 #include <WiFi.h>
+#include <WiFiMulti.h>
 
 /* =============== config section start =============== */
 const int BUTTON_PIN = 35;
@@ -43,6 +44,9 @@ const char* dashboardURL = "default";
 
 #define HTTP_PORT 8000
 #define WEBSOCKET_PORT 8001
+
+// you can provide credentials to multiple WiFi networks
+WiFiMulti wifiMulti;
 
 WebSocketsServer webSocket = WebSocketsServer(WEBSOCKET_PORT);
 HusarnetServer server(HTTP_PORT);
@@ -137,37 +141,45 @@ void setup() {
 }
 
 void taskWifi(void* parameter) {
+  uint8_t stat = WL_DISCONNECTED;
+
+  /* Configure Wi-Fi */
+  for (int i = 0; i < NUM_NETWORKS; i++) {
+    wifiMulti.addAP(ssidTab[i], passwordTab[i]);
+    Serial.printf("WiFi %d: SSID: \"%s\" ; PASS: \"%s\"\r\n", i, ssidTab[i],
+                  passwordTab[i]);
+  }
+
+  while (stat != WL_CONNECTED) {
+    stat = wifiMulti.run();
+    Serial.printf("WiFi status: %d\r\n", (int)stat);
+    delay(100);
+  }
+
+  Serial.printf("WiFi connected\r\n", (int)stat);
+  Serial.printf("IP address: ");
+  Serial.println(WiFi.localIP());
+
+  /* Start Husarnet */
+  Husarnet.selfHostedSetup(dashboardURL);
+  Husarnet.join(husarnetJoinCode, hostName);
+  Husarnet.start();
+
+  webSocket.begin();
+  webSocket.onEvent(onWebSocketEvent);
+
+  server.begin();
+
   while (1) {
-    for (int i = 0; i < NUM_NETWORKS; i++) {
-      Serial.println();
-      Serial.print("Connecting to ");
-      Serial.print(ssidTab[i]);
-      WiFi.begin(ssidTab[i], passwordTab[i]);
-      for (int j = 0; j < 10; j++) {
-        if (WiFi.status() != WL_CONNECTED) {
-          delay(500);
-          Serial.print(".");
-        } else {
-          Serial.println("done");
-          Serial.print("IP address: ");
-          Serial.println(WiFi.localIP());
-
-          Husarnet.selfHostedSetup(dashboardURL);
-          Husarnet.join(husarnetJoinCode, hostName);
-          Husarnet.start();
-
-          webSocket.begin();
-          webSocket.onEvent(onWebSocketEvent);
-
-          server.begin();
-
-          while (WiFi.status() == WL_CONNECTED) {
-            webSocket.loop();
-            delay(2);
-          }
-        }
-      }
+    while (WiFi.status() == WL_CONNECTED) {
+      webSocket.loop();
+      delay(2);
     }
+
+    Serial.printf("WiFi disconnected, reconnecting\r\n");
+    delay(500);
+    stat = wifiMulti.run();
+    Serial.printf("WiFi status: %d\r\n", (int)stat);
   }
 }
 
