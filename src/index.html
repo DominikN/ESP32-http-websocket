@@ -32,12 +32,12 @@
       function WebSocketBegin() {
         if ("WebSocket" in window) {
           // Let us open a web socket
-          //     ws = new WebSocket(
-          // location.hostname.match(/\.husarnetusers\.com$/) ? "wss://" + location.hostname + "/__port_8000/ws" : "ws://" + location.hostname + ":8000/ws"
-          //     );
-          ws = new WebSocket(
-            "wss://fc94f91f5992989f83474cc8abf7329b-8000.husarnetusers.com/ws"
-          );
+              ws = new WebSocket(
+          location.hostname.match(/\.husarnetusers\.com$/) ? "wss://" + location.hostname + "/__port_8000/ws" : "ws://" + location.hostname + ":8000/ws"
+              );
+          // ws = new WebSocket(
+          //   "wss://fc94f91f5992989f83474cc8abf7329b-8000.husarnetusers.com/ws"
+          // );
 
           ws.onopen = function() {
             // Web Socket is connected

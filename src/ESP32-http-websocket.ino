@@ -1,11 +1,16 @@
-#include <ArduinoJson.h>
-#include <AsyncTCP.h>
-#include <ESPAsyncWebServer.h>
 #include <Husarnet.h>
-#include <SPI.h>
-#include <TFT_eSPI.h>
+
 #include <WiFi.h>
 #include <WiFiMulti.h>
+
+#include <AsyncTCP.h>
+#include <ESPAsyncWebServer.h>
+
+#include <ArduinoJson.h>
+
+#include <SPI.h>
+#include <TFT_eSPI.h>
+
 
 /* =============== config section start =============== */
 const int BUTTON_PIN = 35;
@@ -52,12 +57,10 @@ AsyncWebServer server(HTTP_PORT);
 AsyncWebSocket ws("/ws");
 
 StaticJsonDocument<200> jsonDocTx;
-
 StaticJsonDocument<100> jsonDocRx;
 
-const String html =
-#include "html.h"
-    ;
+extern const char index_html_start[] asm("_binary_src_index_html_start");
+const String html = String((const char *)index_html_start);
 
 bool wsconnected = false;
 
@@ -126,7 +129,7 @@ void setup() {
 
   xTaskCreate(taskWifi,   /* Task function. */
               "taskWifi", /* String with name of task. */
-              10000,      /* Stack size in bytes. */
+              20000,      /* Stack size in bytes. */
               NULL,       /* Parameter passed as input of the task */
               1,          /* Priority of the task. */
               NULL);      /* Task handle. */
