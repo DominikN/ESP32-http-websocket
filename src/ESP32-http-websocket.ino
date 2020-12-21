@@ -1,25 +1,22 @@
+#include <ArduinoJson.h>
+#include <AsyncTCP.h>
+#include <ESPAsyncWebServer.h>
 #include <Husarnet.h>
-
+#include <SPI.h>
+#include <TFT_eSPI.h>
 #include <WiFi.h>
 #include <WiFiMulti.h>
 
-#include <AsyncTCP.h>
-#include <ESPAsyncWebServer.h>
-
-#include <ArduinoJson.h>
-
-#include <SPI.h>
-#include <TFT_eSPI.h>
-
-
 /* =============== config section start =============== */
+
+#define ENABLE_TFT 0  // tested on TTGO T Display
+
+#define HTTP_PORT 8000
+
 const int BUTTON_PIN = 35;
 const int LED_PIN = 17;
 
-// Husarnet credentials
-const char* hostName =
-    "esp32websocket";  // this will be the name of the 1st ESP32 device at
-                       // https://app.husarnet.com
+const char* hostName = "esp32websocket";
 
 #if __has_include("credentials.h")
 #include "credentials.h"
@@ -48,11 +45,29 @@ const char* dashboardURL = "default";
 #endif
 /* =============== config section end =============== */
 
-#define HTTP_PORT 8000
+#if ENABLE_TFT == 1
+TFT_eSPI tft = TFT_eSPI();  // Invoke custom library
+#define LOG(f_, ...)                                                         \
+  {                                                                          \
+    if (tft.getCursorY() >= tft.height()) {                                  \
+      tft.fillScreen(TFT_BLACK);                                             \
+      tft.setCursor(0, 0);                                                   \
+      tft.printf("IP: %u.%u.%u.%u\r\n", myip[0], myip[1], myip[2], myip[3]); \
+      tft.printf("Hostname: %s\r\n--\r\n", Husarnet.getHostname().c_str());  \
+    }                                                                        \
+    tft.printf((f_), ##__VA_ARGS__);                                         \
+    Serial.printf((f_), ##__VA_ARGS__);                                      \
+  }
+#else
+#define LOG(f_, ...) \
+  { Serial.printf((f_), ##__VA_ARGS__); }
+#endif
 
 // you can provide credentials to multiple WiFi networks
 WiFiMulti wifiMulti;
+IPAddress myip;
 
+// https://github.com/me-no-dev/ESPAsyncWebServer/issues/324 - sometimes
 AsyncWebServer server(HTTP_PORT);
 AsyncWebSocket ws("/ws");
 
@@ -60,7 +75,7 @@ StaticJsonDocument<200> jsonDocTx;
 StaticJsonDocument<100> jsonDocRx;
 
 extern const char index_html_start[] asm("_binary_src_index_html_start");
-const String html = String((const char *)index_html_start);
+const String html = String((const char*)index_html_start);
 
 bool wsconnected = false;
 
@@ -72,37 +87,35 @@ void onWsEvent(AsyncWebSocket* server, AsyncWebSocketClient* client,
                AwsEventType type, void* arg, uint8_t* data, size_t len) {
   if (type == WS_EVT_CONNECT) {
     wsconnected = true;
-    Serial.printf("ws[%s][%u] connect\n", server->url(), client->id());
+    LOG("ws[%s][%u] connect\n", server->url(), client->id());
     // client->printf("Hello Client %u :)", client->id());
     client->ping();
   } else if (type == WS_EVT_DISCONNECT) {
     wsconnected = false;
-    Serial.printf("ws[%s][%u] disconnect\n", server->url(), client->id());
+    LOG("ws[%s][%u] disconnect\n", server->url(), client->id());
   } else if (type == WS_EVT_ERROR) {
-    Serial.printf("ws[%s][%u] error(%u): %s\n", server->url(), client->id(),
-                  *((uint16_t*)arg), (char*)data);
+    LOG("ws[%s][%u] error(%u): %s\n", server->url(), client->id(),
+        *((uint16_t*)arg), (char*)data);
   } else if (type == WS_EVT_PONG) {
-    Serial.printf("ws[%s][%u] pong[%u]: %s\n", server->url(), client->id(), len,
-                  (len) ? (char*)data : "");
+    LOG("ws[%s][%u] pong[%u]: %s\n", server->url(), client->id(), len,
+        (len) ? (char*)data : "");
   } else if (type == WS_EVT_DATA) {
     AwsFrameInfo* info = (AwsFrameInfo*)arg;
     String msg = "";
     if (info->final && info->index == 0 && info->len == len) {
       // the whole message is in a single frame and we got all of it's data
-      Serial.printf("ws[%s][%u] %s-message[%llu]: ", server->url(),
-                    client->id(), (info->opcode == WS_TEXT) ? "text" : "binary",
-                    info->len);
+      LOG("ws[%s][%u] %s-msg[%llu]\r\n", server->url(), client->id(),
+          (info->opcode == WS_TEXT) ? "txt" : "bin", info->len);
 
       if (info->opcode == WS_TEXT) {
         for (size_t i = 0; i < info->len; i++) {
           msg += (char)data[i];
         }
+        LOG("%s\r\n\r\n", msg.c_str());
 
         deserializeJson(jsonDocRx, msg);
 
         uint8_t ledState = jsonDocRx["led"];
-
-        Serial.printf("LED state = %d\r\n", ledState);
         if (ledState == 1) {
           digitalWrite(LED_PIN, HIGH);
         }
@@ -111,7 +124,6 @@ void onWsEvent(AsyncWebSocket* server, AsyncWebSocketClient* client,
         }
         jsonDocRx.clear();
       }
-      Serial.printf("%s\n", msg.c_str());
     }
   }
 }
@@ -122,6 +134,16 @@ void taskStatus(void* parameter);
 void setup() {
   Serial.begin(115200);
 
+#if ENABLE_TFT == 1
+  tft.init();
+  tft.setRotation(0);
+  tft.fillScreen(TFT_BLACK);
+  tft.setTextColor(TFT_WHITE, TFT_BLACK);
+  tft.setTextSize(1);
+#endif
+  LOG("Starting...\r\n");
+  tft.setCursor(0, tft.height());
+
   pinMode(BUTTON_PIN, INPUT_PULLUP);
 
   pinMode(LED_PIN, OUTPUT);
@@ -131,19 +153,14 @@ void setup() {
               "taskWifi", /* String with name of task. */
               20000,      /* Stack size in bytes. */
               NULL,       /* Parameter passed as input of the task */
-              1,          /* Priority of the task. */
+              2,          /* Priority of the task. */
               NULL);      /* Task handle. */
-
-  xTaskCreate(taskStatus,   /* Task function. */
-              "taskStatus", /* String with name of task. */
-              10000,        /* Stack size in bytes. */
-              NULL,         /* Parameter passed as input of the task */
-              1,            /* Priority of the task. */
-              NULL);        /* Task handle. */
 }
 
 void taskWifi(void* parameter) {
   uint8_t stat = WL_DISCONNECTED;
+  static char output[200];
+  int cnt = 0;
 
   /* Configure Wi-Fi */
   for (int i = 0; i < NUM_NETWORKS; i++) {
@@ -160,7 +177,7 @@ void taskWifi(void* parameter) {
 
   Serial.printf("WiFi connected\r\n", (int)stat);
   Serial.printf("IP address: ");
-  Serial.println(WiFi.localIP());
+  Serial.println(myip = WiFi.localIP());
 
   /* Start Husarnet */
   Husarnet.selfHostedSetup(dashboardURL);
@@ -168,56 +185,51 @@ void taskWifi(void* parameter) {
   Husarnet.start();
 
   /* Start web server and web socket server */
-
   server.on("/", HTTP_GET, [](AsyncWebServerRequest* request) {
     request->send(200, "text/html", html);
   });
   server.onNotFound(notFound);
-
   ws.onEvent(onWsEvent);
   server.addHandler(&ws);
-
   server.begin();
+
+  LOG("Type in browser:\r\n%s:%d\r\n", hostName, HTTP_PORT);
 
   while (1) {
     while (WiFi.status() == WL_CONNECTED) {
-      ws.cleanupClients();
-      delay(100);
-    }
+      if (wsconnected == true) {
+        jsonDocTx.clear();
+        jsonDocTx["counter"] = cnt++;
+        jsonDocTx["button"] = digitalRead(BUTTON_PIN);
 
-    Serial.printf("WiFi disconnected, reconnecting\r\n");
-    delay(500);
-    stat = wifiMulti.run();
-    Serial.printf("WiFi status: %d\r\n", (int)stat);
-  }
-}
+        serializeJson(jsonDocTx, output, 200);
 
-void taskStatus(void* parameter) {
-  String output;
-  int cnt = 0;
-  uint8_t button_status = 0;
-  while (1) {
-    if (wsconnected == true) {
-      if (digitalRead(BUTTON_PIN) == LOW) {
-        button_status = 1;
-      } else {
-        button_status = 0;
+        Serial.printf("Sending: %s", output);
+        if (ws.availableForWriteAll()) {
+          ws.textAll(output);
+          Serial.printf("...done\r\n");
+        } else {
+          Serial.printf("...queue is full\r\n");
+        }
+
+        delay(5);
+        if (cnt % 10 == 0) {
+          ws.cleanupClients();
+          Serial.printf("[Watermark: %d]\r\n",
+                        uxTaskGetStackHighWaterMark(NULL));
+        }
       }
-      output = "";
-
-      jsonDocTx.clear();
-      jsonDocTx["counter"] = cnt++;
-      jsonDocTx["button"] = button_status;
-      serializeJson(jsonDocTx, output);
-
-      Serial.print(F("Sending: "));
-      Serial.print(output);
-      Serial.println();
-
-      ws.textAll(output);
+      delay(5);
     }
-    delay(100);
+
+    stat = wifiMulti.run();
+    myip = WiFi.localIP();
+    LOG("WiFi status: %d\r\n", (int)stat);
+    delay(500);
   }
 }
 
-void loop() { delay(5000); }
+void loop() {
+  Serial.printf("[RAM: %d]\r\n", esp_get_free_heap_size());
+  delay(2000);
+}
