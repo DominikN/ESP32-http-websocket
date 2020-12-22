@@ -163,6 +163,7 @@ void taskWifi(void* parameter) {
   static char output[200];
   int cnt = 0;
   int lastButtonState = digitalRead(BUTTON_PIN);
+  TickType_t xLastWakeTime = xTaskGetTickCount();
 
   /* Configure Wi-Fi */
   for (int i = 0; i < NUM_NETWORKS; i++) {
@@ -199,10 +200,12 @@ void taskWifi(void* parameter) {
 
   while (1) {
     while (WiFi.status() == WL_CONNECTED) {
-      if ((wsconnected == true) && (lastButtonState != digitalRead(BUTTON_PIN))) {
+      cnt++;
+      if ((wsconnected == true) &&
+          ((lastButtonState != digitalRead(BUTTON_PIN)) || (cnt % 100 == 0))) {
         lastButtonState = digitalRead(BUTTON_PIN);
         jsonDocTx.clear();
-        jsonDocTx["counter"] = cnt++;
+        jsonDocTx["counter"] = cnt;
         jsonDocTx["button"] = lastButtonState;
 
         serializeJson(jsonDocTx, output, 200);
@@ -215,7 +218,7 @@ void taskWifi(void* parameter) {
           Serial.printf("...queue is full\r\n");
         }
       } else {
-        delay(10);
+        vTaskDelayUntil(&xLastWakeTime, 10 / portTICK_PERIOD_MS);
       }
     }
 

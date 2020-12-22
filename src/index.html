@@ -33,15 +33,15 @@
     function WebSocketBegin() {
       if ("WebSocket" in window) {
         // Let us open a web socket
-        // ws = new WebSocket(
-        //   location.hostname.match(/\.husarnetusers\.com$/) ? "wss://" + location.hostname + "/__port_8000/ws" : "ws://" + location.hostname + ":8000/ws"
-        // );
+        ws = new WebSocket(
+          location.hostname.match(/\.husarnetusers\.com$/) ? "wss://" + location.hostname + "/__port_8000/ws" : "ws://" + location.hostname + ":8000/ws"
+        );
         // ws = new WebSocket(
         //   "wss://fc9434c5513c3543753124468f76fa507-8000.husarnetusers.com/ws"
         // );
-        ws = new WebSocket(
-          "ws://esp32websocket:8000/ws"
-        );
+        // ws = new WebSocket(
+        //   "ws://esp32websocket:8000/ws"
+        // );
 
         ws.onopen = function () {
           // Web Socket is connected
@@ -104,7 +104,7 @@
             <div class="card-body">
               <h5 class="card-title">Counter</h5>
               <p class="card-text">
-                A counter value is updated every 100ms by ESP32.
+                A counter value is updated every 1s by ESP32.
               </p>
               <p id="cnt" class="font-weight-bold">
                 0

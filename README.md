@@ -31,6 +31,7 @@ The template combines all useful technologies in one:
 A demo is really basic:
 
 - control a LED connected to ESP32 by using a button in web UI.
+- update cnt value in the web ui every 1s
 - ESP32 sends a button state to change a color of the dot in web UI.
 
 To run the project, open Visual Studio Code with Platformio extension and follow these steps:
