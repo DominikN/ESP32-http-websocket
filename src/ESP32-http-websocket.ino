@@ -9,7 +9,7 @@
 
 /* =============== config section start =============== */
 
-#define ENABLE_TFT 0  // tested on TTGO T Display
+#define ENABLE_TFT 1  // tested on TTGO T Display
 
 #define HTTP_PORT 8000
 
@@ -140,9 +140,10 @@ void setup() {
   tft.fillScreen(TFT_BLACK);
   tft.setTextColor(TFT_WHITE, TFT_BLACK);
   tft.setTextSize(1);
-#endif
+
   LOG("Starting...\r\n");
   tft.setCursor(0, tft.height());
+#endif
 
   pinMode(BUTTON_PIN, INPUT_PULLUP);
 
@@ -161,6 +162,7 @@ void taskWifi(void* parameter) {
   uint8_t stat = WL_DISCONNECTED;
   static char output[200];
   int cnt = 0;
+  int lastButtonState = digitalRead(BUTTON_PIN);
 
   /* Configure Wi-Fi */
   for (int i = 0; i < NUM_NETWORKS; i++) {
@@ -197,10 +199,11 @@ void taskWifi(void* parameter) {
 
   while (1) {
     while (WiFi.status() == WL_CONNECTED) {
-      if (wsconnected == true) {
+      if ((wsconnected == true) && (lastButtonState != digitalRead(BUTTON_PIN))) {
+        lastButtonState = digitalRead(BUTTON_PIN);
         jsonDocTx.clear();
         jsonDocTx["counter"] = cnt++;
-        jsonDocTx["button"] = digitalRead(BUTTON_PIN);
+        jsonDocTx["button"] = lastButtonState;
 
         serializeJson(jsonDocTx, output, 200);
 
@@ -211,15 +214,9 @@ void taskWifi(void* parameter) {
         } else {
           Serial.printf("...queue is full\r\n");
         }
-
-        delay(5);
-        if (cnt % 10 == 0) {
-          ws.cleanupClients();
-          Serial.printf("[Watermark: %d]\r\n",
-                        uxTaskGetStackHighWaterMark(NULL));
-        }
+      } else {
+        delay(10);
       }
-      delay(5);
     }
 
     stat = wifiMulti.run();
@@ -231,5 +228,8 @@ void taskWifi(void* parameter) {
 
 void loop() {
   Serial.printf("[RAM: %d]\r\n", esp_get_free_heap_size());
-  delay(2000);
+  delay(1000);
+  // add ping mechanism in case of websocket connection timeout
+  // ws.cleanupClients();
+  // ws.pingAll();
 }
