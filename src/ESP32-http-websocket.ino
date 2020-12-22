@@ -9,7 +9,7 @@
 
 /* =============== config section start =============== */
 
-#define ENABLE_TFT 1  // tested on TTGO T Display
+#define ENABLE_TFT 0  // tested on TTGO T Display
 
 #define HTTP_PORT 8000
 
