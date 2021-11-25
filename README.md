@@ -72,7 +72,7 @@ To find your Husarnet Join Code setup a free account at https://app.husarnet.com
 ### 4. Upload code to your board
 
 Just click this button in VSC + Platformio
-![Upload code](screenshot_flash_button.png)
+![Upload code](docs/screenshot_flash_button.png)
 
 ### 5. Open WebUI
 
@@ -86,4 +86,4 @@ At this stage your ESP32 and your laptop are in the same VLAN network. The best 
 `http://esp32websocket:8000`
 You should see a web UI to controll your ESP32 now.
 
-![screenshot_esp32_webui](screenshot_esp32_webui.png)
+![screenshot_esp32_webui](docs/screenshot_esp32_webui.png)

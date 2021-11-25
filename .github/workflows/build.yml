@@ -1,0 +1,22 @@
+name: Build firmware
+
+on:
+  push:
+    branches:
+      - 'master'
+    
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Installing platformio
+      run: pip3 install -U platformio
+
+    - name: Building a firmware 
+      run: |
+        pio lib install
+        pio run
