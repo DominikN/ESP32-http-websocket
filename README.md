@@ -2,7 +2,6 @@
 
 [![GitHub stars](https://img.shields.io/github/stars/dominikn/ESP32-http-websocket?style=social)](https://github.com/DominikN/ESP32-http-websocket/stargazers/)
 
-
 [![Build firmware](https://github.com/DominikN/ESP32-http-websocket/actions/workflows/build.yml/badge.svg)](https://github.com/DominikN/ESP32-http-websocket/actions/workflows/build.yml)
 [![GitHub license](https://img.shields.io/github/license/dominikn/ESP32-http-websocket.svg)](https://github.com/dominikn/ESP32-http-websocket/blob/master/LICENSE)
 
