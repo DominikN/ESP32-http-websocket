@@ -1,5 +1,12 @@
 # ESP32-http-websocket
 
+[![GitHub stars](https://img.shields.io/github/stars/dominikn/ESP32-http-websocket?style=social)](https://github.com/DominikN/ESP32-http-websocket/stargazers/)
+
+
+[![Build firmware](https://github.com/DominikN/ESP32-http-websocket/actions/workflows/build.yml/badge.svg)](https://github.com/DominikN/ESP32-http-websocket/actions/workflows/build.yml)
+[![GitHub license](https://img.shields.io/github/license/dominikn/ESP32-http-websocket.svg)](https://github.com/dominikn/ESP32-http-websocket/blob/master/LICENSE)
+
+
 **_ESP32 + HTTP server + websockets + Bootstrap + Husarnet. A simple project template showing how to use those technologies to create a fast, pretty and secure web UI hosted on ESP32. Works in LAN and over the internet. Written using Arduino framework._**
 
 ## Intro
